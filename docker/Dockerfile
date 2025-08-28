@@ -6,6 +6,9 @@ ARG release
 
 WORKDIR /invidious
 
+# Copia anche la cartella .git per permettere alle macro Crystal di funzionare
+COPY .git .git
+
 # Installa le dipendenze Crystal
 COPY ./shard.yml ./shard.yml
 COPY ./shard.lock ./shard.lock
