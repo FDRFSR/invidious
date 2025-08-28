@@ -1,23 +1,12 @@
-# Warning: This docker-compose file is made for development purposes.
-# Using it will build an image from the locally cloned repository.
-#
-# If you want to use Invidious in production, see the docker-compose.yml file provided
-# in the installation documentation: https://docs.invidious.io/installation/
-
 version: "3"
 services:
 
   invidious:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
+    image: quay.io/invidious/invidious:latest
+    # image: quay.io/invidious/invidious:latest-arm64 # ARM64/AArch64 devices
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
-    depends_on:
-      invidious-db:
-        condition: service_healthy
-        restart: true
+      - "5555:3000"
     environment:
       # Please read the following file for a comprehensive list of all available
       # configuration options and their associated syntax:
@@ -30,16 +19,38 @@ services:
           host: invidious-db
           port: 5432
         check_tables: true
+        signature_server: inv_sig_helper:12999
+        visitor_data: "CgszTlZJLUJJMlhlayin-7_FBjInCgJJVBIhEh0SGwsMDg8QERITFBUWFxgZGhscHR4fICEiIyQlJiBV"
+        po_token: "MpgBm6EYh6G_a9ybnR3D6sIybW0L0J6cJ2VdA-V6rvb2EYcfK9CB9scljP-QQ5mwAZnujjwS5fwgBK3J8CHd0tKeNPaBofUmleTZ_Qzb4hfg22jCRPNnrzLmxDtJS9o7Yfi-O-s_A5XOTD9HV40IAvS3ghJrlEfIs_PdM55z4FQMwcx0Ocy3CkiB9EnJMP8179yB-qSYesiLaiI="
         # external_port:
         # domain:
         # https_only: false
-        # statistics_enabled: false
-        hmac_key: "CHANGE_ME!!"
+        # statistics_enabled: true
+        hmac_key: "4Lm7iIobzG9YSmQVkSlFeigGBuVm8dIS"
     healthcheck:
       test: wget -nv --tries=1 --spider http://127.0.0.1:3000/api/v1/trending || exit 1
       interval: 30s
       timeout: 5s
       retries: 2
+   # logging:
+   #  options:
+   #    max-size: "1G"
+   #    max-file: "4"
+    depends_on:
+      - invidious-db
+
+  inv_sig_helper:
+    image: quay.io/invidious/inv-sig-helper:latest
+    init: true
+    command: ["--tcp", "0.0.0.0:12999"]
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
 
   invidious-db:
     image: docker.io/library/postgres:14
@@ -56,4 +67,4 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
 
 volumes:
-  postgresdata:
+  postgresdata: 
