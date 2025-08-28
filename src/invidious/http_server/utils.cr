@@ -7,9 +7,15 @@ module Invidious::HttpServer
     def proxy_video_url(raw_url : String, *, region : String? = nil, absolute : Bool = false)
       url = URI.parse(raw_url)
 
+      # If URL has no host, return the original URL unchanged
+      # This can happen with relative URLs, empty URLs, or malformed URLs
+      if url.host.nil?
+        return raw_url
+      end
+
       # Add some URL parameters
       params = url.query_params
-      params["host"] = url.host.not_nil! # Should never be nil, in theory
+      params["host"] = url.host.not_nil! # Safe to use not_nil! here since we checked above
       params["region"] = region if !region.nil?
       url.query_params = params
 
