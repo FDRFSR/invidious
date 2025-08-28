@@ -27,7 +27,7 @@ def get_subscription_feed(user, max_results = 40, page = 1)
   offset = (page - 1) * limit
 
   notifications = Invidious::Database::Users.select_notifications(user)
-  view_name = "subscriptions_#{sha256(user.email)}"
+  view_name = Invidious::Database::Utils.subscription_view_name(user.email)
 
   if user.preferences.notifications_only && !notifications.empty?
     # Only show notifications

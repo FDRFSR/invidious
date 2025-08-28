@@ -13,7 +13,7 @@ class Invidious::Jobs::RefreshFeedsJob < Invidious::Jobs::BaseJob
       db.query("SELECT email FROM users WHERE feed_needs_update = true OR feed_needs_update IS NULL") do |rs|
         rs.each do
           email = rs.read(String)
-          view_name = "subscriptions_#{sha256(email)}"
+          view_name = Invidious::Database::Utils.subscription_view_name(email)
 
           if active_fibers >= max_fibers
             if active_channel.receive
@@ -29,32 +29,38 @@ class Invidious::Jobs::RefreshFeedsJob < Invidious::Jobs::BaseJob
               ChannelVideo.type_array.each_with_index do |name, i|
                 if name != column_array[i]?
                   LOGGER.info("RefreshFeedsJob: DROP MATERIALIZED VIEW #{view_name}")
-                  db.exec("DROP MATERIALIZED VIEW #{view_name}")
+                  Invidious::Database::Utils.exec_with_identifier(db, "DROP MATERIALIZED VIEW %s", view_name)
                   raise "view does not exist"
                 end
               end
 
-              if !db.query_one("SELECT pg_get_viewdef('#{view_name}')", as: String).includes? "WHERE ((cv.ucid = ANY (u.subscriptions))"
+              view_def = Invidious::Database::Utils.query_one_with_identifier(db, "SELECT pg_get_viewdef(%s)", view_name, as: String)
+              if !view_def.includes? "WHERE ((cv.ucid = ANY (u.subscriptions))"
                 LOGGER.info("RefreshFeedsJob: Materialized view #{view_name} is out-of-date, recreating...")
-                db.exec("DROP MATERIALIZED VIEW #{view_name}")
+                Invidious::Database::Utils.exec_with_identifier(db, "DROP MATERIALIZED VIEW %s", view_name)
               end
 
-              db.exec("REFRESH MATERIALIZED VIEW #{view_name}")
+              Invidious::Database::Utils.exec_with_identifier(db, "REFRESH MATERIALIZED VIEW %s", view_name)
               db.exec("UPDATE users SET feed_needs_update = false WHERE email = $1", email)
             rescue ex
               # Rename old views
               begin
-                legacy_view_name = "subscriptions_#{sha256(email)[0..7]}"
+                legacy_view_name = Invidious::Database::Utils.legacy_subscription_view_name(email)
 
-                db.exec("SELECT * FROM #{legacy_view_name} LIMIT 0")
+                Invidious::Database::Utils.exec_with_identifier(db, "SELECT * FROM %s LIMIT 0", legacy_view_name)
                 LOGGER.info("RefreshFeedsJob: RENAME MATERIALIZED VIEW #{legacy_view_name}")
-                db.exec("ALTER MATERIALIZED VIEW #{legacy_view_name} RENAME TO #{view_name}")
+
+                # For ALTER statements with two identifiers, we need to construct safely
+                quoted_legacy = Invidious::Database::Utils.quote_pg_identifier(legacy_view_name)
+                quoted_view = Invidious::Database::Utils.quote_pg_identifier(view_name)
+                db.exec("ALTER MATERIALIZED VIEW #{quoted_legacy} RENAME TO #{quoted_view}")
               rescue ex
                 begin
                   # While iterating through, we may have an email stored from a deleted account
                   if db.query_one?("SELECT true FROM users WHERE email = $1", email, as: Bool)
                     LOGGER.info("RefreshFeedsJob: CREATE #{view_name}")
-                    db.exec("CREATE MATERIALIZED VIEW #{view_name} AS #{MATERIALIZED_VIEW_SQL.call(email)}")
+                    quoted_view = Invidious::Database::Utils.quote_pg_identifier(view_name)
+                    db.exec("CREATE MATERIALIZED VIEW #{quoted_view} AS #{MATERIALIZED_VIEW_SQL.call(email)}")
                     db.exec("UPDATE users SET feed_needs_update = false WHERE email = $1", email)
                   end
                 rescue ex

@@ -262,7 +262,18 @@ def get_referer(env, fallback = "/", unroll = true)
   end
 
   referer = referer.request_target
+  # Stronger sanitization to prevent XSS - only allow safe URL characters
+  # and ensure the path starts with /
   referer = "/" + referer.gsub(/[^\/?@&%=\-_.:,*0-9a-zA-Z+]/, "").lstrip("/\\")
+
+  # Additional security: ensure the referer doesn't contain script injection patterns
+  if referer.downcase.includes?("javascript:") ||
+     referer.downcase.includes?("data:") ||
+     referer.downcase.includes?("vbscript:") ||
+     referer.includes?("<") ||
+     referer.includes?(">")
+    referer = fallback
+  end
 
   if referer == env.request.path
     referer = fallback
