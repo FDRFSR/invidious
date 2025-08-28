@@ -297,7 +297,9 @@ def subscribe_pubsub(topic, key)
     # don't have feeds
     topic = "playlist_id=#{topic}"
   else
-    # TODO
+    # For unsupported topic types, log a warning for future investigation
+    LOGGER.warn("Unsupported pubsub topic format: #{topic}")
+    return
   end
 
   time = Time.utc.to_unix.to_s

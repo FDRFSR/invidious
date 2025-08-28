@@ -53,7 +53,8 @@ module Invidious::Routes::Account
       return error_template(401, "Password is a required field")
     end
 
-    new_passwords = env.params.body.select { |k, _| k.match(/^new_password\[\d+\]$/) }.map { |_, v| v }
+    # Optimize: combine select and map operations for better performance
+    new_passwords = env.params.body.compact_map { |k, v| k.match(/^new_password\[\d+\]$/) ? v : nil }
 
     if new_passwords.size <= 1 || new_passwords.uniq.size != 1
       return error_template(400, "New passwords must match")
@@ -240,7 +241,8 @@ module Invidious::Routes::Account
       return error_template(400, ex)
     end
 
-    scopes = env.params.body.select { |k, _| k.match(/^scopes\[\d+\]$/) }.map { |_, v| v }
+    # Optimize: combine select and map operations for better performance
+    scopes = env.params.body.compact_map { |k, v| k.match(/^scopes\[\d+\]$/) ? v : nil }
     callback_url = env.params.body["callbackUrl"]?
     expire = env.params.body["expire"]?.try &.to_i?
 

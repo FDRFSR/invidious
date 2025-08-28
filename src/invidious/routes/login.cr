@@ -90,7 +90,8 @@ module Invidious::Routes::Login
           account_type = "invidious"
           captcha = Invidious::User::Captcha.generate_image(HMAC_KEY)
 
-          tokens = env.params.body.select { |k, _| k.match(/^token\[\d+\]$/) }.map { |_, v| v }
+          # Optimize: combine select and map operations for better performance
+          tokens = env.params.body.compact_map { |k, v| k.match(/^token\[\d+\]$/) ? v : nil }
 
           if answer
             answer = answer.lstrip('0')
