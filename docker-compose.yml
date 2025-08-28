@@ -1,9 +1,11 @@
 version: "3"
 services:
 
-  invidious:
-    build: .
-    restart: unless-stopped
+invidious:
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  restart: unless-stopped
     ports:
       - "5555:3000"
     environment:
