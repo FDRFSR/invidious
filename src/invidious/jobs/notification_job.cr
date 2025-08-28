@@ -81,7 +81,8 @@ class Invidious::Jobs::NotificationJob < Invidious::Jobs::BaseJob
                     "videoId"   => n.video_id,
                     "published" => n.published.to_unix,
                   }.to_json
-                  conn.exec("NOTIFY notifications, E'#{payload}'")
+                  # Use parameterized query to prevent SQL injection
+                  conn.exec("NOTIFY notifications, $1", payload)
                 end
               end
             else

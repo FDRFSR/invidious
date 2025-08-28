@@ -90,7 +90,8 @@ module Invidious::Routes::Login
           account_type = "invidious"
           captcha = Invidious::User::Captcha.generate_image(HMAC_KEY)
 
-          tokens = env.params.body.select { |k, _| k.match(/^token\[\d+\]$/) }.map { |_, v| v }
+          # Optimize: combine select and map operations for better performance
+          tokens = env.params.body.compact_map { |k, v| k.match(/^token\[\d+\]$/) ? v : nil }
 
           if answer
             answer = answer.lstrip('0')
@@ -118,8 +119,9 @@ module Invidious::Routes::Login
         Invidious::Database::Users.insert(user)
         Invidious::Database::SessionIDs.insert(sid, email)
 
-        view_name = "subscriptions_#{sha256(user.email)}"
-        PG_DB.exec("CREATE MATERIALIZED VIEW #{view_name} AS #{MATERIALIZED_VIEW_SQL.call(user.email)}")
+        view_name = Invidious::Database::Utils.subscription_view_name(user.email)
+        quoted_view_name = Invidious::Database::Utils.quote_pg_identifier(view_name)
+        PG_DB.exec("CREATE MATERIALIZED VIEW #{quoted_view_name} AS #{MATERIALIZED_VIEW_SQL.call(user.email)}")
 
         env.response.cookies["SID"] = Invidious::User::Cookies.sid(CONFIG.domain, sid)
 

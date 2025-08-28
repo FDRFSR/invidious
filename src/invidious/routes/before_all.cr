@@ -12,7 +12,9 @@ module Invidious::Routes::BeforeAll
           end
         end
       end
-    rescue
+    rescue ex
+      # Log JSON parsing error for debugging while providing fallback
+      LOGGER.warn("Failed to parse preferences from cookie: #{ex.message}")
       preferences = Preferences.from_json("{}")
     end
 
