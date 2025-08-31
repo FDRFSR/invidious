@@ -31,7 +31,7 @@ class Invidious::Jobs::SubscribeToFeedsJob < Invidious::Jobs::BaseJob
             begin
               response = subscribe_pubsub(ucid, hmac_key)
 
-              if response.status_code >= 400
+              if response && response.status_code >= 400
                 LOGGER.error("SubscribeToFeedsJob: #{ucid} : #{response.body}")
               end
             rescue ex
