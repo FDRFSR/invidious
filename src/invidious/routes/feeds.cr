@@ -422,7 +422,9 @@ module Invidious::Routes::Feeds
 
         begin
           video = get_video(id, force_refresh: true)
-        rescue
+        rescue ex
+          # Log error attempting to get video details for feed notification
+          LOGGER.debug("Failed to get video #{id} for feed notification: #{ex.message}")
           next # skip this video since it raised an exception (e.g. it is a scheduled live event)
         end
 

@@ -8,7 +8,14 @@ module Invidious::Frontend::Misc
       current_page = env.get?("current_page").as(String)
       return "/redirect?referer=#{current_page}"
     else
-      return "https://redirect.invidious.io#{env.request.resource}"
+      # Validate that the resource starts with / to prevent open redirect
+      resource = env.request.resource
+      if resource.starts_with?("/")
+        return "https://redirect.invidious.io#{resource}"
+      else
+        # If resource doesn't start with /, use safe default
+        return "https://redirect.invidious.io/"
+      end
     end
   end
 end
