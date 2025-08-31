@@ -332,6 +332,156 @@ function updateCookie(newVolume, newSpeed) {
     video_data.params.speed = speedValue;
 }
 
+// Quality indicator functionality
+function createQualityIndicator() {
+    var qualityIndicator = document.createElement('div');
+    qualityIndicator.className = 'vjs-quality-indicator vjs-quality-indicator-hidden';
+    qualityIndicator.id = 'quality-indicator';
+    qualityIndicator.setAttribute('aria-label', 'Video quality indicator');
+    return qualityIndicator;
+}
+
+function getQualityFromHeight(height) {
+    if (height >= 2160) {
+        return { text: '4K', class: 'quality-4k' };
+    } else if (height >= 1440) {
+        return { text: '1440p', class: 'quality-hd' };
+    } else if (height >= 1080) {
+        return { text: '1080p', class: 'quality-hd' };
+    } else if (height >= 720) {
+        return { text: '720p', class: 'quality-hd' };
+    } else if (height >= 480) {
+        return { text: '480p', class: 'quality-sd' };
+    } else if (height >= 360) {
+        return { text: '360p', class: 'quality-sd' };
+    } else {
+        return { text: height + 'p', class: 'quality-sd' };
+    }
+}
+
+function updateQualityIndicator() {
+    var indicator = document.getElementById('quality-indicator');
+    if (!indicator) return;
+    
+    var qualityInfo = { text: 'Auto', class: 'quality-auto' };
+    
+    try {
+        if (video_data.params.quality === 'dash' && player.qualityLevels) {
+            var qualityLevels = player.qualityLevels();
+            var currentLevel = null;
+            
+            // Find the currently enabled level
+            for (var i = 0; i < qualityLevels.length; i++) {
+                if (qualityLevels[i].enabled) {
+                    currentLevel = qualityLevels[i];
+                    break;
+                }
+            }
+            
+            if (currentLevel && currentLevel.height) {
+                qualityInfo = getQualityFromHeight(currentLevel.height);
+            }
+        } else if (video_data.params.quality !== 'dash') {
+            // For non-DASH videos, try to get quality from the current source
+            var currentSrc = player.currentSource();
+            if (currentSrc && currentSrc.label) {
+                var label = currentSrc.label;
+                
+                // Parse common quality patterns
+                if (label.includes('2160') || label.toLowerCase().includes('4k')) {
+                    qualityInfo = { text: '4K', class: 'quality-4k' };
+                } else if (label.includes('1440')) {
+                    qualityInfo = { text: '1440p', class: 'quality-hd' };
+                } else if (label.includes('1080')) {
+                    qualityInfo = { text: '1080p', class: 'quality-hd' };
+                } else if (label.includes('720')) {
+                    qualityInfo = { text: '720p', class: 'quality-hd' };
+                } else if (label.includes('480')) {
+                    qualityInfo = { text: '480p', class: 'quality-sd' };
+                } else if (label.includes('360')) {
+                    qualityInfo = { text: '360p', class: 'quality-sd' };
+                } else if (label.includes('240')) {
+                    qualityInfo = { text: '240p', class: 'quality-sd' };
+                } else {
+                    // Use the label as-is for audio bitrates or other formats
+                    qualityInfo = { text: label, class: 'quality-auto' };
+                }
+            }
+        }
+    } catch (error) {
+        console.log('Quality indicator error:', error);
+        qualityInfo = { text: 'Auto', class: 'quality-auto' };
+    }
+    
+    // Remove existing quality classes
+    indicator.className = indicator.className.replace(/quality-\w+/g, '');
+    
+    // Add new quality class and update text
+    indicator.className += ' ' + qualityInfo.class;
+    indicator.textContent = qualityInfo.text;
+    
+    // Show indicator
+    indicator.className = indicator.className.replace('vjs-quality-indicator-hidden', 'vjs-quality-indicator-visible');
+    
+    // Hide after 3 seconds, unless user is hovering
+    setTimeout(function() {
+        if (indicator.className.includes('vjs-quality-indicator-visible') && !indicator._hovered) {
+            indicator.className = indicator.className.replace('vjs-quality-indicator-visible', 'vjs-quality-indicator-hidden');
+        }
+    }, 3000);
+}
+
+function initQualityIndicator() {
+    player.ready(function() {
+        var playerEl = player.el();
+        var indicator = createQualityIndicator();
+        playerEl.appendChild(indicator);
+        
+        // Add hover handling to keep indicator visible
+        indicator.addEventListener('mouseenter', function() {
+            indicator._hovered = true;
+        });
+        
+        indicator.addEventListener('mouseleave', function() {
+            indicator._hovered = false;
+            setTimeout(function() {
+                if (!indicator._hovered && indicator.className.includes('vjs-quality-indicator-visible')) {
+                    indicator.className = indicator.className.replace('vjs-quality-indicator-visible', 'vjs-quality-indicator-hidden');
+                }
+            }, 1000);
+        });
+        
+        // Show indicator on initial load
+        setTimeout(updateQualityIndicator, 1500);
+        
+        // Update indicator when quality changes (for DASH)
+        if (video_data.params.quality === 'dash' && player.qualityLevels) {
+            player.qualityLevels().on('change', function() {
+                setTimeout(updateQualityIndicator, 100);
+            });
+        }
+        
+        // Update indicator when source changes (for non-DASH)
+        player.on('loadedmetadata', function() {
+            setTimeout(updateQualityIndicator, 100);
+        });
+        
+        player.on('sourcechanged', function() {
+            setTimeout(updateQualityIndicator, 100);
+        });
+        
+        // Show indicator when user interacts with player
+        playerEl.addEventListener('mouseenter', function() {
+            updateQualityIndicator();
+        });
+        
+        // Show indicator when entering/exiting fullscreen
+        player.on('fullscreenchange', function() {
+            setTimeout(updateQualityIndicator, 200);
+        });
+    });
+}
+
 player.on('ratechange', function () {
     updateCookie(null, player.playbackRate());
     if (isMobile()) {
@@ -836,4 +986,7 @@ addEventListener('DOMContentLoaded', function () {
     if (changeInstanceLink) changeInstanceLink.addEventListener('click', function () {
         changeInstanceLink.href = addCurrentTimeToURL(changeInstanceLink.href);
     });
+    
+    // Initialize quality indicator
+    initQualityIndicator();
 });

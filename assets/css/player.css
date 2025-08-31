@@ -264,3 +264,74 @@ video.video-js {
     overflow-x: hidden;
   }
 }
+
+/* Quality indicator badge */
+.vjs-quality-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.vjs-quality-indicator.vjs-quality-indicator-visible {
+  opacity: 1;
+}
+
+.vjs-quality-indicator.vjs-quality-indicator-hidden {
+  opacity: 0;
+}
+
+/* Different quality styles */
+.vjs-quality-indicator.quality-4k {
+  background: rgba(255, 0, 100, 0.8);
+  border: 1px solid rgba(255, 0, 100, 0.3);
+}
+
+.vjs-quality-indicator.quality-hd {
+  background: rgba(0, 182, 240, 0.8);
+  border: 1px solid rgba(0, 182, 240, 0.3);
+}
+
+.vjs-quality-indicator.quality-sd {
+  background: rgba(255, 165, 0, 0.8);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.vjs-quality-indicator.quality-auto {
+  background: rgba(128, 128, 128, 0.8);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* Theme-aware quality indicator */
+.light-theme .vjs-quality-indicator {
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  text-shadow: none;
+}
+
+.dark-theme .vjs-quality-indicator {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+}
+
+/* Mobile responsiveness */
+@media screen and (max-width: 650px) {
+  .vjs-quality-indicator {
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+}
